@@ -102,12 +102,14 @@ func NewListenerWithMode(ctx context.Context, inner net.Listener, mode ListenMod
 	return &listener{
 		inner:        tls.NewListener(inner, tlsConfig),
 		sourceCloser: sourceCloser,
+		connTracker:  opt.connTracker,
 	}, nil
 }
 
 type listener struct {
 	inner        net.Listener
 	sourceCloser io.Closer
+	connTracker  *ConnTracker
 }
 
 func (l *listener) Accept() (net.Conn, error) {
@@ -121,7 +123,11 @@ func (l *listener) Accept() (net.Conn, error) {
 		conn.Close()
 		return nil, wrapSpiffetlsErr(fmt.Errorf("unexpected conn type %T returned by TLS listener", conn))
 	}
-	return &serverConn{Conn: tlsConn}, nil
+	var out net.Conn = &serverConn{Conn: tlsConn}
+	if l.connTracker != nil {
+		out = l.connTracker.track(out)
+	}
+	return out, nil
 }
 
 func (l *listener) Addr() net.Addr {

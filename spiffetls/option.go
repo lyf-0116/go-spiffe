@@ -23,6 +23,7 @@ type dialConfig struct {
 	baseTLSConf *tls.Config
 	dialer      *net.Dialer
 	tlsOptions  []tlsconfig.Option
+	connTracker *ConnTracker
 }
 
 type listenOption func(*listenConfig)
@@ -30,6 +31,7 @@ type listenOption func(*listenConfig)
 type listenConfig struct {
 	baseTLSConf *tls.Config
 	tlsOptions  []tlsconfig.Option
+	connTracker *ConnTracker
 }
 
 func (fn listenOption) apply(c *listenConfig) {
@@ -60,6 +62,17 @@ func WithDialer(dialer *net.Dialer) DialOption {
 	})
 }
 
+// WithDialConnTracker tracks the dialed connection with the given ConnTracker.
+// When the X509 source watched by the tracker reports a new SPIFFE ID, the
+// connection is closed so that the application can reconnect using the
+// rotated identity instead of continuing to present the identity pinned
+// during the original handshake.
+func WithDialConnTracker(tracker *ConnTracker) DialOption {
+	return dialOption(func(c *dialConfig) {
+		c.connTracker = tracker
+	})
+}
+
 // ListenOption is an option for listening. Option's are also ListenOption's.
 type ListenOption interface {
 	apply(*listenConfig)
@@ -78,6 +91,17 @@ func WithListenTLSConfigBase(base *tls.Config) ListenOption {
 func WithListenTLSOptions(opts ...tlsconfig.Option) ListenOption {
 	return listenOption(func(c *listenConfig) {
 		c.tlsOptions = opts
+	})
+}
+
+// WithListenConnTracker tracks every connection accepted by the listener with
+// the given ConnTracker. When the X509 source watched by the tracker reports
+// a new SPIFFE ID, the tracked connections are closed so that peers
+// reconnect and observe the rotated identity rather than the identity pinned
+// during each original handshake.
+func WithListenConnTracker(tracker *ConnTracker) ListenOption {
+	return listenOption(func(c *listenConfig) {
+		c.connTracker = tracker
 	})
 }
 

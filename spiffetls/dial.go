@@ -77,10 +77,14 @@ func DialWithMode(ctx context.Context, network, addr string, mode DialMode, opti
 		return nil, wrapSpiffetlsErr(fmt.Errorf("unable to dial: %w", err))
 	}
 
-	return &clientConn{
+	var out net.Conn = &clientConn{
 		Conn:         conn,
 		sourceCloser: sourceCloser,
-	}, nil
+	}
+	if opt.connTracker != nil {
+		out = opt.connTracker.track(out)
+	}
+	return out, nil
 }
 
 type clientConn struct {

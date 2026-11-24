@@ -4,6 +4,7 @@
 
 ### Added
 
+- `spiffetls.ConnTracker`, together with the `spiffetls.WithDialConnTracker` and `spiffetls.WithListenConnTracker` options, which track active TLS connections and close them when the local `workloadapi.X509Source` rotates to a different SPIFFE ID. This prevents long-lived connections from continuing to present the identity pinned at handshake time after a workload credential rotation; certificate renewals that keep the same SPIFFE ID leave the connections untouched
 - `spiffeid.MatchIDPrefix` matcher and `tlsconfig.AuthorizeIDPrefix` authorizer, which accept any SPIFFE ID in the same trust domain whose path matches the given prefix's path or extends it on a segment boundary. The prefix must have a nonempty path, otherwise no ID matches (#406)
 
 ### Changed
